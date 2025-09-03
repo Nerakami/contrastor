@@ -1,59 +1,60 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { Editor } from "@monaco-editor/react"
 
 interface MonacoEditorProps {
   value: string
   onChange: (value: string) => void
   language: "html" | "css"
   height?: string
+  theme?: "vs-dark" | "vs-light"
 }
 
-export function MonacoEditor({ value, onChange, language, height = "400px" }: MonacoEditorProps) {
-  const editorRef = useRef<HTMLDivElement>(null)
-  const monacoRef = useRef<any>(null)
+export function MonacoEditor({ value, onChange, language, height = "400px", theme = "vs-dark" }: MonacoEditorProps) {
+  const handleEditorChange = (value: string | undefined) => {
+    onChange(value || "")
+  }
 
-  useEffect(() => {
-    const loadMonaco = async () => {
-      // Simple textarea fallback for now - in a real app you'd load Monaco Editor
-      if (editorRef.current) {
-        const textarea = document.createElement("textarea")
-        textarea.value = value
-        textarea.style.width = "100%"
-        textarea.style.height = height
-        textarea.style.fontFamily = "Monaco, 'Courier New', monospace"
-        textarea.style.fontSize = "14px"
-        textarea.style.border = "1px solid #e2e8f0"
-        textarea.style.borderRadius = "6px"
-        textarea.style.padding = "12px"
-        textarea.style.resize = "none"
-        textarea.style.outline = "none"
-        textarea.style.backgroundColor = "#1e1e1e"
-        textarea.style.color = "#d4d4d4"
-
-        textarea.addEventListener("input", (e) => {
-          onChange((e.target as HTMLTextAreaElement).value)
-        })
-
-        editorRef.current.appendChild(textarea)
-        monacoRef.current = textarea
-
-        return () => {
-          if (editorRef.current && textarea) {
-            editorRef.current.removeChild(textarea)
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <Editor
+        height={height}
+        language={language}
+        value={value}
+        onChange={handleEditorChange}
+        theme={theme}
+        options={{
+          minimap: { enabled: false },
+          scrollBeyondLastLine: false,
+          fontSize: 14,
+          lineNumbers: "on",
+          renderWhitespace: "selection",
+          automaticLayout: true,
+          tabSize: 2,
+          insertSpaces: true,
+          wordWrap: "on",
+          lineHeight: 20,
+          fontFamily: "'Fira Code', 'Monaco', 'Menlo', 'Cascadia Code', 'Courier New', monospace",
+          contextmenu: true,
+          quickSuggestions: {
+            other: true,
+            comments: true,
+            strings: true
+          },
+          parameterHints: {
+            enabled: true
+          },
+          suggestOnTriggerCharacters: true,
+          acceptSuggestionOnEnter: "on",
+          tabCompletion: "on",
+          formatOnType: true,
+          formatOnPaste: true,
+          autoIndent: "full",
+          bracketPairColorization: {
+            enabled: true
           }
-        }
-      }
-    }
-
-    loadMonaco()
-  }, [])
-
-  useEffect(() => {
-    if (monacoRef.current && monacoRef.current.value !== value) {
-      monacoRef.current.value = value
-    }
-  }, [value])
-
-  return <div ref={editorRef} className="border rounded-lg overflow-hidden" />
+        }}
+      />
+    </div>
+  )
 }

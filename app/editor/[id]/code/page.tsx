@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { DashboardNav } from "@/components/dashboard-nav"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,7 +14,8 @@ import { useRouter } from "next/navigation"
 import { saveCodeContent } from "@/lib/editor-actions"
 import { createClient } from "@/lib/supabase/client"
 
-export default function CodeEditorPage({ params }: { params: { id: string } }) {
+export default function CodeEditorPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [email, setEmail] = useState<any>(null)
@@ -46,7 +47,7 @@ export default function CodeEditorPage({ params }: { params: { id: string } }) {
           groups(name),
           folders(name)
         `)
-        .eq("id", params.id)
+        .eq("id", id)
         .single()
 
       if (error || !emailData) {
@@ -77,12 +78,12 @@ export default function CodeEditorPage({ params }: { params: { id: string } }) {
     }
 
     loadData()
-  }, [params.id, router, supabase])
+  }, [id, router, supabase])
 
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      const result = await saveCodeContent(params.id, htmlContent, cssContent)
+      const result = await saveCodeContent(id, htmlContent, cssContent)
       if (result.error) {
         console.error("Save error:", result.error)
       }
@@ -188,9 +189,9 @@ export default function CodeEditorPage({ params }: { params: { id: string } }) {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
           <Button variant="ghost" asChild>
-            <Link href={`/editor/${params.id}`}>
+            <Link href="/dashboard">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Editor
+              Back to Dashboard
             </Link>
           </Button>
           <div className="flex items-center space-x-2">

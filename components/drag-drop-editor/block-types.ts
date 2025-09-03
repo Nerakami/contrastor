@@ -32,10 +32,11 @@ export interface TextBlock extends BaseBlock {
   style: {
     fontSize: number
     fontWeight: "normal" | "bold"
+    fontFamily: string
     textAlign: "left" | "center" | "right"
     color: string
     backgroundColor: string
-    padding: number
+    padding: { top: number, right: number, bottom: number, left: number } | number
     lineHeight: number
   }
 }
@@ -132,6 +133,7 @@ export function createTextBlock(): TextBlock {
     style: {
       fontSize: 16,
       fontWeight: "normal",
+      fontFamily: "Arial",
       textAlign: "left",
       color: "#000000",
       backgroundColor: "transparent",

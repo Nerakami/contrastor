@@ -2,27 +2,58 @@
 
 import type { EmailBlock, RowBlock, ColumnBlock, ContentBlock } from "./block-types"
 import { Button } from "@/components/ui/button"
-import { Trash2, Edit, Plus } from "lucide-react"
+import { Trash2, Edit, Plus, GripVertical } from "lucide-react"
+import { useSortable, useDroppable } from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+import { ColumnDropZone } from "./column-drop-zone"
 
 interface BlockRendererProps {
   block: EmailBlock
   isSelected: boolean
-  onSelect: () => void
-  onDelete: () => void
-  onEdit: () => void
-  onAddToColumn?: (columnId: string) => void
+  selectedBlockId?: string | null
+  onSelect: (blockId?: string) => void
+  onDelete: (blockId?: string) => void
+  onEdit: (blockId?: string) => void
+  onAddToColumn?: (columnId: string, contentBlock: ContentBlock) => void
 }
 
-export function BlockRenderer({ block, isSelected, onSelect, onDelete, onEdit, onAddToColumn }: BlockRendererProps) {
+export function BlockRenderer({ block, isSelected, selectedBlockId, onSelect, onDelete, onEdit, onAddToColumn }: BlockRendererProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: block.id,
+    data: { block },
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
   const renderContentBlock = (contentBlock: ContentBlock, inColumn = false) => {
+    const isContentSelected = selectedBlockId === contentBlock.id
+    
     switch (contentBlock.type) {
       case "text":
         return (
           <td
+            className={`relative cursor-pointer transition-colors ${
+              isContentSelected ? "ring-2 ring-primary ring-offset-2" : "hover:bg-gray-50"
+            }`}
+            onClick={(e) => {
+              e.stopPropagation()
+              onSelect(contentBlock.id)
+            }}
+            align={contentBlock.style.textAlign}
             style={{
               fontSize: `${contentBlock.style.fontSize}px`,
               fontWeight: contentBlock.style.fontWeight,
-              textAlign: contentBlock.style.textAlign,
+              fontFamily: contentBlock.style.fontFamily,
               color: contentBlock.style.color,
               backgroundColor:
                 contentBlock.style.backgroundColor === "transparent" ? undefined : contentBlock.style.backgroundColor,
@@ -30,20 +61,43 @@ export function BlockRenderer({ block, isSelected, onSelect, onDelete, onEdit, o
               lineHeight: contentBlock.style.lineHeight,
             }}
           >
-            <div dangerouslySetInnerHTML={{ __html: contentBlock.content }} />
+            <div 
+              dangerouslySetInnerHTML={{ __html: contentBlock.content }} 
+              onClick={(e) => {
+                // Prevent links from being clickable in editor
+                const target = e.target as HTMLElement
+                if (target.tagName === 'A' || target.closest('a')) {
+                  e.preventDefault()
+                  e.stopPropagation()
+                }
+              }}
+            />
+            {isContentSelected && (
+              <div className="absolute top-1 right-1 flex space-x-1 bg-white rounded shadow-sm border p-1">
+                <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onEdit(contentBlock.id) }}>
+                  <Edit className="h-3 w-3" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onDelete(contentBlock.id) }}>
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
           </td>
         )
 
       case "image":
         return (
           <td
+            align={contentBlock.style.textAlign}
             style={{
-              textAlign: contentBlock.style.textAlign,
               padding: `${contentBlock.style.padding}px`,
             }}
           >
             {contentBlock.href ? (
-              <a href={contentBlock.href}>
+              <span 
+                style={{ cursor: "default" }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
+              >
                 <img
                   src={contentBlock.src || "/placeholder.svg"}
                   alt={contentBlock.alt}
@@ -54,7 +108,7 @@ export function BlockRenderer({ block, isSelected, onSelect, onDelete, onEdit, o
                     display: "block",
                   }}
                 />
-              </a>
+              </span>
             ) : (
               <img
                 src={contentBlock.src || "/placeholder.svg"}
@@ -73,8 +127,8 @@ export function BlockRenderer({ block, isSelected, onSelect, onDelete, onEdit, o
       case "button":
         return (
           <td
+            align={contentBlock.style.textAlign}
             style={{
-              textAlign: contentBlock.style.textAlign,
               padding: `${contentBlock.style.padding}px`,
             }}
           >
@@ -86,8 +140,7 @@ export function BlockRenderer({ block, isSelected, onSelect, onDelete, onEdit, o
                     borderRadius: `${contentBlock.style.borderRadius}px`,
                   }}
                 >
-                  <a
-                    href={contentBlock.href}
+                  <span
                     style={{
                       display: "block",
                       color: contentBlock.style.color,
@@ -95,10 +148,12 @@ export function BlockRenderer({ block, isSelected, onSelect, onDelete, onEdit, o
                       textDecoration: "none",
                       fontSize: `${contentBlock.style.fontSize}px`,
                       fontWeight: contentBlock.style.fontWeight,
+                      cursor: "default",
                     }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation() }}
                   >
                     {contentBlock.text}
-                  </a>
+                  </span>
                 </td>
               </tr>
             </table>
@@ -151,16 +206,13 @@ export function BlockRenderer({ block, isSelected, onSelect, onDelete, onEdit, o
           <tbody>
             {column.blocks.length === 0 ? (
               <tr>
-                <td style={{ padding: "20px", textAlign: "center", color: "#9ca3af", border: "2px dashed #e5e7eb" }}>
-                  <div className="flex flex-col items-center space-y-2">
-                    <Plus className="h-6 w-6" />
-                    <span>Drop content here</span>
-                    {onAddToColumn && (
-                      <Button size="sm" variant="outline" onClick={() => onAddToColumn(column.id)}>
-                        Add Content
-                      </Button>
-                    )}
-                  </div>
+                <td style={{ padding: "10px" }}>
+                  {onAddToColumn && (
+                    <ColumnDropZone
+                      columnId={column.id}
+                      onAddContent={(contentBlock) => onAddToColumn(column.id, contentBlock)}
+                    />
+                  )}
                 </td>
               </tr>
             ) : (
@@ -207,20 +259,31 @@ export function BlockRenderer({ block, isSelected, onSelect, onDelete, onEdit, o
 
   return (
     <div
-      className={`relative group cursor-pointer border-2 transition-colors ${
+      ref={setNodeRef}
+      style={style}
+      className={`relative group border-2 transition-colors ${
         isSelected ? "border-primary bg-primary/5" : "border-transparent hover:border-muted-foreground/30"
       }`}
-      onClick={onSelect}
+      onClick={() => onSelect(block.id)}
     >
       {renderBlock()}
 
       {/* Block controls */}
       {isSelected && (
         <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded shadow-lg p-1">
-          <Button size="sm" variant="secondary" onClick={onEdit}>
+          <Button 
+            size="sm" 
+            variant="ghost" 
+            {...attributes}
+            {...listeners}
+            className="cursor-grab hover:cursor-grabbing"
+          >
+            <GripVertical className="h-3 w-3" />
+          </Button>
+          <Button size="sm" variant="secondary" onClick={() => onEdit(block.id)}>
             <Edit className="h-3 w-3" />
           </Button>
-          <Button size="sm" variant="destructive" onClick={onDelete}>
+          <Button size="sm" variant="destructive" onClick={() => onDelete(block.id)}>
             <Trash2 className="h-3 w-3" />
           </Button>
         </div>

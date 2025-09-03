@@ -12,6 +12,7 @@ import {
   createSpacerBlock,
   createDividerBlock,
 } from "./block-types"
+import { DraggableBlockItem } from "./draggable-block-item"
 
 interface BlockSidebarProps {
   onAddBlock: (block: EmailBlock) => void
@@ -66,21 +67,16 @@ export function BlockSidebar({ onAddBlock }: BlockSidebarProps) {
         <CardContent className="space-y-2">
           {layoutTypes.map((layoutType) => {
             const Icon = layoutType.icon
+            const block = createBlock(layoutType.type, layoutType.columns)
             return (
-              <Button
+              <DraggableBlockItem
                 key={layoutType.type}
-                variant="outline"
-                className="w-full justify-start h-auto p-3 bg-transparent"
-                onClick={() => onAddBlock(createBlock(layoutType.type, layoutType.columns))}
-              >
-                <div className="flex items-center space-x-3">
-                  <Icon className="h-5 w-5" />
-                  <div className="text-left">
-                    <div className="font-medium">{layoutType.label}</div>
-                    <div className="text-xs text-muted-foreground">{layoutType.description}</div>
-                  </div>
-                </div>
-              </Button>
+                block={block}
+                icon={Icon}
+                label={layoutType.label}
+                description={layoutType.description}
+                onAdd={() => onAddBlock(block)}
+              />
             )
           })}
         </CardContent>
@@ -94,21 +90,16 @@ export function BlockSidebar({ onAddBlock }: BlockSidebarProps) {
         <CardContent className="space-y-2">
           {contentTypes.map((contentType) => {
             const Icon = contentType.icon
+            const block = createBlock(contentType.type)
             return (
-              <Button
+              <DraggableBlockItem
                 key={contentType.type}
-                variant="outline"
-                className="w-full justify-start h-auto p-3 bg-transparent"
-                onClick={() => onAddBlock(createBlock(contentType.type))}
-              >
-                <div className="flex items-center space-x-3">
-                  <Icon className="h-5 w-5" />
-                  <div className="text-left">
-                    <div className="font-medium">{contentType.label}</div>
-                    <div className="text-xs text-muted-foreground">{contentType.description}</div>
-                  </div>
-                </div>
-              </Button>
+                block={block}
+                icon={Icon}
+                label={contentType.label}
+                description={contentType.description}
+                onAdd={() => onAddBlock(block)}
+              />
             )
           })}
         </CardContent>

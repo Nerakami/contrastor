@@ -1,20 +1,35 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { DashboardNav } from "@/components/dashboard-nav"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { BlockSidebar } from "@/components/drag-drop-editor/block-sidebar"
 import { BlockRenderer } from "@/components/drag-drop-editor/block-renderer"
 import { BlockEditor } from "@/components/drag-drop-editor/block-editor"
-import type { EmailBlock, EmailContent } from "@/components/drag-drop-editor/block-types"
+import type { EmailBlock, EmailContent, ContentBlock } from "@/components/drag-drop-editor/block-types"
 import { ArrowLeft, Save, Eye, Download } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { saveEmailContent } from "@/lib/editor-actions"
 import { createClient } from "@/lib/supabase/client"
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  useDroppable,
+} from "@dnd-kit/core"
+import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
+import { CanvasDropZone } from "@/components/drag-drop-editor/canvas-drop-zone"
 
-export default function DragDropEditorPage({ params }: { params: { id: string } }) {
+export default function DragDropEditorPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [email, setEmail] = useState<any>(null)
@@ -22,6 +37,18 @@ export default function DragDropEditorPage({ params }: { params: { id: string } 
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [draggedBlock, setDraggedBlock] = useState<EmailBlock | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { 
+      activationConstraint: { 
+        distance: 5,
+        delay: 100,
+        tolerance: 5
+      } 
+    })
+  )
 
   const supabase = createClient()
 
@@ -45,7 +72,7 @@ export default function DragDropEditorPage({ params }: { params: { id: string } 
           groups(name),
           folders(name)
         `)
-        .eq("id", params.id)
+        .eq("id", id)
         .single()
 
       if (error || !emailData) {
@@ -67,47 +94,183 @@ export default function DragDropEditorPage({ params }: { params: { id: string } 
       }
 
       setEmail(emailData)
-      if (emailData.content && emailData.content.blocks) {
-        setContent(emailData.content)
-      } else {
-        // If content is null or doesn't have blocks, use default structure
-        setContent({ blocks: [] })
-      }
+      const initialContent = emailData.content && emailData.content.blocks 
+        ? emailData.content 
+        : { blocks: [] }
+      
+      console.log("Setting initial content:", initialContent)
+      setContent(initialContent)
     }
 
     loadData()
-  }, [params.id, router, supabase])
+  }, [id, router, supabase])
 
   const handleAddBlock = (block: EmailBlock) => {
+    console.log("Adding block to content:", block)
+    setContent((prev) => {
+      const newContent = {
+        blocks: [...(prev.blocks || []), block]
+      }
+      console.log("New content after adding block:", newContent)
+      return newContent
+    })
+  }
+
+  const handleAddToColumn = (columnId: string, contentBlock: ContentBlock) => {
     setContent((prev) => ({
-      blocks: [...(prev.blocks || []), block], // Add defensive check for blocks
+      blocks: (prev.blocks || []).map((block) => {
+        if (block.type === "row") {
+          const rowBlock = block as any
+          return {
+            ...rowBlock,
+            columns: rowBlock.columns.map((col: any) => 
+              col.id === columnId 
+                ? { ...col, blocks: [...col.blocks, contentBlock] }
+                : col
+            )
+          }
+        }
+        return block
+      })
     }))
   }
 
   const handleUpdateBlock = (updatedBlock: EmailBlock) => {
     setContent((prev) => ({
-      blocks: (prev.blocks || []).map((block) => (block.id === updatedBlock.id ? updatedBlock : block)), // Add defensive check for blocks
+      blocks: (prev.blocks || []).map((block) => {
+        if (block.id === updatedBlock.id) {
+          return updatedBlock
+        }
+        if (block.type === "row") {
+          const rowBlock = block as any
+          return {
+            ...rowBlock,
+            columns: rowBlock.columns.map((col: any) => ({
+              ...col,
+              blocks: col.blocks.map((contentBlock: any) => 
+                contentBlock.id === updatedBlock.id ? updatedBlock : contentBlock
+              )
+            }))
+          }
+        }
+        return block
+      })
     }))
   }
 
-  const handleDeleteBlock = (blockId: string) => {
+  const handleDeleteBlock = (blockId?: string) => {
+    if (!blockId) return
+    
     setContent((prev) => ({
-      blocks: (prev.blocks || []).filter((block) => block.id !== blockId), // Add defensive check for blocks
+      blocks: (prev.blocks || []).map((block) => {
+        if (block.type === "row") {
+          const rowBlock = block as any
+          return {
+            ...rowBlock,
+            columns: rowBlock.columns.map((col: any) => ({
+              ...col,
+              blocks: col.blocks.filter((contentBlock: any) => contentBlock.id !== blockId)
+            }))
+          }
+        }
+        return block
+      }).filter((block) => block.id !== blockId)
     }))
+    
     if (selectedBlockId === blockId) {
       setSelectedBlockId(null)
+    }
+  }
+
+  const handleDragStart = (event: DragStartEvent) => {
+    console.log("Drag start:", event.active.id, event.active.data.current)
+    setActiveId(event.active.id as string)
+    const draggedItem = event.active.data.current
+    if (draggedItem) {
+      setDraggedBlock(draggedItem.block)
+    }
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    
+    console.log("Drag end:", {
+      active: { id: active.id, data: active.data.current },
+      over: over ? { id: over.id, data: over.data.current } : null
+    })
+    
+    setActiveId(null)
+    setDraggedBlock(null)
+
+    if (!over) {
+      console.log("No drop target found")
+      return
+    }
+
+    const activeData = active.data.current
+    const overData = over.data.current
+
+    // Handle dropping from sidebar to canvas
+    if (activeData?.isFromSidebar) {
+      console.log("Dropping from sidebar", { activeData, overData, overId: over.id })
+      
+      if (overData?.columnId) {
+        // Dropping into a column
+        console.log("Dropping into column:", overData.columnId)
+        const newBlock = activeData.block as ContentBlock
+        handleAddToColumn(overData.columnId, { ...newBlock, id: `${newBlock.type}-${Date.now()}` })
+      } else {
+        // Dropping onto main canvas (check for canvas ID or isCanvas flag)
+        console.log("Dropping onto main canvas", { isCanvas: overData?.isCanvas, overId: over.id })
+        const newBlock = { ...activeData.block, id: `${activeData.block.type}-${Date.now()}` } as EmailBlock
+        handleAddBlock(newBlock)
+        console.log("Added block:", newBlock)
+      }
+      return
+    }
+
+    // Handle reordering existing blocks
+    if (active.id !== over.id) {
+      const activeIndex = (content.blocks || []).findIndex((block) => block.id === active.id)
+      const overIndex = (content.blocks || []).findIndex((block) => block.id === over.id)
+
+      if (activeIndex !== -1 && overIndex !== -1) {
+        setContent((prev) => ({
+          blocks: arrayMove(prev.blocks || [], activeIndex, overIndex)
+        }))
+      }
+    }
+  }
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event
+    
+    if (!over) return
+    
+    const activeData = active.data.current
+    const overData = over.data.current
+
+    // Handle dropping content into columns
+    if (activeData?.isFromSidebar && overData?.columnId) {
+      return // Let handleDragEnd handle this
     }
   }
 
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      const result = await saveEmailContent(params.id, content)
+      console.log("Saving content:", content)
+      const result = await saveEmailContent(id, content)
       if (result.error) {
         console.error("Save error:", result.error)
+        alert("Error saving: " + result.error)
+      } else {
+        console.log("Save successful")
+        alert("Content saved successfully!")
       }
     } catch (error) {
       console.error("Save error:", error)
+      alert("Error saving content")
     } finally {
       setIsSaving(false)
     }
@@ -115,55 +278,111 @@ export default function DragDropEditorPage({ params }: { params: { id: string } 
 
   const generateHTML = () => {
     const blocks = content.blocks || []
+    
+    const renderContentBlock = (contentBlock: any) => {
+      switch (contentBlock.type) {
+        case "text":
+          return `
+          <tr>
+            <td style="
+              font-size: ${contentBlock.style.fontSize}px;
+              font-weight: ${contentBlock.style.fontWeight};
+              font-family: ${contentBlock.style.fontFamily};
+              color: ${contentBlock.style.color};
+              ${contentBlock.style.backgroundColor !== "transparent" ? `background-color: ${contentBlock.style.backgroundColor};` : ""}
+              padding: ${contentBlock.style.padding}px;
+              line-height: ${contentBlock.style.lineHeight};
+            " align="${contentBlock.style.textAlign}">
+              ${contentBlock.content}
+            </td>
+          </tr>`
+        case "image":
+          return `
+          <tr>
+            <td align="${contentBlock.style.textAlign}" style="padding: ${contentBlock.style.padding}px;">
+              ${contentBlock.href ? 
+                `<a href="${contentBlock.href}">
+                  <img src="${contentBlock.src}" alt="${contentBlock.alt}" style="width: ${contentBlock.style.width}; height: ${contentBlock.style.height}; max-width: 100%; display: block;" />
+                </a>` :
+                `<img src="${contentBlock.src}" alt="${contentBlock.alt}" style="width: ${contentBlock.style.width}; height: ${contentBlock.style.height}; max-width: 100%; display: block;" />`
+              }
+            </td>
+          </tr>`
+        case "button":
+          return `
+          <tr>
+            <td align="${contentBlock.style.textAlign}" style="padding: ${contentBlock.style.padding}px;">
+              <table cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="background-color: ${contentBlock.style.backgroundColor}; border-radius: ${contentBlock.style.borderRadius}px;">
+                    <a href="${contentBlock.href}" style="
+                      display: block;
+                      color: ${contentBlock.style.color};
+                      padding: ${contentBlock.style.padding}px 24px;
+                      text-decoration: none;
+                      font-size: ${contentBlock.style.fontSize}px;
+                      font-weight: ${contentBlock.style.fontWeight};
+                    ">
+                      ${contentBlock.text}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`
+        case "spacer":
+          return `<tr><td style="height: ${contentBlock.height}px; line-height: ${contentBlock.height}px; font-size: 1px;">&nbsp;</td></tr>`
+        case "divider":
+          return `
+          <tr>
+            <td style="padding: ${contentBlock.style.padding}px;">
+              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="border-top: ${contentBlock.style.thickness}px solid ${contentBlock.style.color}; font-size: 1px; line-height: 1px;">&nbsp;</td>
+                </tr>
+              </table>
+            </td>
+          </tr>`
+        default:
+          return ""
+      }
+    }
+    
     const blocksHTML = blocks
       .map((block) => {
-        switch (block.type) {
-          case "text":
-            return `
-            <div style="
-              font-size: ${block.style.fontSize}px;
-              font-weight: ${block.style.fontWeight};
-              text-align: ${block.style.textAlign};
-              color: ${block.style.color};
-              ${block.style.backgroundColor !== "transparent" ? `background-color: ${block.style.backgroundColor};` : ""}
-              padding: ${block.style.padding}px;
-            ">
-              ${block.content}
-            </div>
-          `
-          case "image":
-            return `
-            <div style="text-align: ${block.style.textAlign}; padding: ${block.style.padding}px;">
-              <img src="${block.src}" alt="${block.alt}" style="width: ${block.style.width}; height: ${block.style.height}; max-width: 100%;" />
-            </div>
-          `
-          case "button":
-            return `
-            <div style="text-align: ${block.style.textAlign}; padding: ${block.style.padding}px;">
-              <a href="${block.href}" style="
-                display: inline-block;
-                background-color: ${block.style.backgroundColor};
-                color: ${block.style.color};
-                padding: ${block.style.padding}px 24px;
-                border-radius: ${block.style.borderRadius}px;
-                text-decoration: none;
-                font-size: ${block.style.fontSize}px;
-                font-weight: 500;
-              ">
-                ${block.text}
-              </a>
-            </div>
-          `
-          case "spacer":
-            return `<div style="height: ${block.height}px;"></div>`
-          case "divider":
-            return `
-            <div style="padding: ${block.style.padding}px;">
-              <hr style="border: none; border-top: ${block.style.thickness}px solid ${block.style.color}; margin: 0;" />
-            </div>
-          `
-          default:
-            return ""
+        if (block.type === "row") {
+          const rowBlock = block as any
+          return `
+          <table cellpadding="0" cellspacing="0" border="0" width="100%" style="${rowBlock.style.backgroundColor !== "transparent" ? `background-color: ${rowBlock.style.backgroundColor};` : ""}">
+            <tbody>
+              <tr>
+                ${rowBlock.columns.map((col: any) => `
+                  <td width="${col.width}%" style="
+                    ${col.style.backgroundColor !== "transparent" ? `background-color: ${col.style.backgroundColor};` : ""}
+                    padding: ${col.style.padding}px;
+                    vertical-align: ${col.style.verticalAlign};
+                  ">
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tbody>
+                        ${col.blocks.length === 0 ? 
+                          '<tr><td style="padding: 20px;">&nbsp;</td></tr>' :
+                          col.blocks.map((contentBlock: any) => renderContentBlock(contentBlock)).join('')
+                        }
+                      </tbody>
+                    </table>
+                  </td>
+                `).join('')}
+              </tr>
+            </tbody>
+          </table>`
+        } else {
+          // Standalone content block
+          return `
+          <table cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tbody>
+              ${renderContentBlock(block)}
+            </tbody>
+          </table>`
         }
       })
       .join("")
@@ -213,7 +432,22 @@ export default function DragDropEditorPage({ params }: { params: { id: string } 
     avatar_url: user.user_metadata?.avatar_url || "",
   }
 
-  const selectedBlock = selectedBlockId ? (content.blocks || []).find((b) => b.id === selectedBlockId) || null : null // Add defensive check for blocks
+  const selectedBlock = selectedBlockId ? findBlockById(selectedBlockId, content.blocks || []) : null
+
+  function findBlockById(id: string, blocks: EmailBlock[]): EmailBlock | null {
+    for (const block of blocks) {
+      if (block.id === id) return block
+      if (block.type === "row") {
+        const rowBlock = block as any
+        for (const column of rowBlock.columns) {
+          for (const contentBlock of column.blocks) {
+            if (contentBlock.id === id) return contentBlock
+          }
+        }
+      }
+    }
+    return null
+  }
 
   if (showPreview) {
     return (
@@ -253,9 +487,9 @@ export default function DragDropEditorPage({ params }: { params: { id: string } 
       <div className="container mx-auto px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
           <Button variant="ghost" asChild>
-            <Link href={`/editor/${params.id}`}>
+            <Link href="/dashboard">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Editor
+              Back to Dashboard
             </Link>
           </Button>
           <div className="flex items-center space-x-2">
@@ -277,45 +511,78 @@ export default function DragDropEditorPage({ params }: { params: { id: string } 
           </p>
         </div>
 
-        <div className="grid grid-cols-12 gap-6">
-          {/* Block Sidebar */}
-          <div className="col-span-3">
-            <BlockSidebar onAddBlock={handleAddBlock} />
+        <DndContext 
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragOver={handleDragOver}
+        >
+          <div className="grid grid-cols-12 gap-6">
+            {/* Block Sidebar */}
+            <div className="col-span-3">
+              <div className="sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+                <BlockSidebar onAddBlock={handleAddBlock} />
+              </div>
+            </div>
+
+            {/* Canvas */}
+            <div className="col-span-6">
+              <Card>
+                <CardContent className="p-4">
+                  <CanvasDropZone>
+                    {!content.blocks || content.blocks.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <p>Start building your email by dragging blocks from the sidebar</p>
+                      </div>
+                    ) : (
+                      <SortableContext items={(content.blocks || []).map(b => b.id)} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-2">
+                          {(content.blocks || []).map((block) => (
+                            <BlockRenderer
+                              key={block.id}
+                              block={block}
+                              isSelected={selectedBlockId === block.id}
+                              selectedBlockId={selectedBlockId}
+                              onSelect={(blockId) => setSelectedBlockId(blockId || null)}
+                              onDelete={handleDeleteBlock}
+                              onEdit={(blockId) => setSelectedBlockId(blockId || null)}
+                              onAddToColumn={handleAddToColumn}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
+                    )}
+                  </CanvasDropZone>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Properties Panel */}
+            <div className="col-span-3">
+              <div className="sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+                <BlockEditor block={selectedBlock} onUpdate={handleUpdateBlock} onClose={() => setSelectedBlockId(null)} />
+              </div>
+            </div>
           </div>
 
-          {/* Canvas */}
-          <div className="col-span-6">
-            <Card>
-              <CardContent className="p-4">
-                <div className="bg-white min-h-96 border rounded-lg p-4">
-                  {!content.blocks || content.blocks.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <p>Start building your email by adding blocks from the sidebar</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {(content.blocks || []).map((block) => (
-                        <BlockRenderer
-                          key={block.id}
-                          block={block}
-                          isSelected={selectedBlockId === block.id}
-                          onSelect={() => setSelectedBlockId(block.id)}
-                          onDelete={() => handleDeleteBlock(block.id)}
-                          onEdit={() => setSelectedBlockId(block.id)}
-                        />
-                      ))}
-                    </div>
-                  )}
+          <DragOverlay>
+            {draggedBlock && (
+              <div className="opacity-75 rotate-3 transform bg-white border border-primary rounded p-2 shadow-lg">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium">{draggedBlock.type}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {draggedBlock.type === 'text' ? 'Text Block' :
+                     draggedBlock.type === 'image' ? 'Image Block' :
+                     draggedBlock.type === 'button' ? 'Button Block' :
+                     draggedBlock.type === 'row' ? `${(draggedBlock as any).columns?.length || 1} Column Layout` :
+                     'Block'}
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Properties Panel */}
-          <div className="col-span-3">
-            <BlockEditor block={selectedBlock} onUpdate={handleUpdateBlock} onClose={() => setSelectedBlockId(null)} />
-          </div>
-        </div>
+              </div>
+            )}
+          </DragOverlay>
+        </DndContext>
       </div>
     </div>
   )
