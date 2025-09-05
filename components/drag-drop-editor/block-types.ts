@@ -99,10 +99,11 @@ export interface EmailContent {
 export function createRowBlock(columnCount: number): RowBlock {
   const columnWidth = Math.floor(100 / columnCount)
   const columns: ColumnBlock[] = []
+  const baseTimestamp = Date.now()
 
   for (let i = 0; i < columnCount; i++) {
     columns.push({
-      id: `col-${Date.now()}-${i}`,
+      id: `col-${baseTimestamp}-${i}`,
       type: "column",
       width: columnWidth,
       blocks: [],
@@ -115,7 +116,7 @@ export function createRowBlock(columnCount: number): RowBlock {
   }
 
   return {
-    id: `row-${Date.now()}`,
+    id: `row-${baseTimestamp}`,
     type: "row",
     columns,
     style: {

@@ -67,15 +67,15 @@ export function BlockSidebar({ onAddBlock }: BlockSidebarProps) {
         <CardContent className="space-y-2">
           {layoutTypes.map((layoutType) => {
             const Icon = layoutType.icon
-            const block = createBlock(layoutType.type, layoutType.columns)
+            const createFreshBlock = () => createBlock(layoutType.type, layoutType.columns)
             return (
               <DraggableBlockItem
                 key={layoutType.type}
-                block={block}
+                block={createFreshBlock()}
                 icon={Icon}
                 label={layoutType.label}
                 description={layoutType.description}
-                onAdd={() => onAddBlock(block)}
+                onAdd={() => onAddBlock(createFreshBlock())}
               />
             )
           })}
@@ -90,15 +90,15 @@ export function BlockSidebar({ onAddBlock }: BlockSidebarProps) {
         <CardContent className="space-y-2">
           {contentTypes.map((contentType) => {
             const Icon = contentType.icon
-            const block = createBlock(contentType.type)
+            const createFreshBlock = () => createBlock(contentType.type)
             return (
               <DraggableBlockItem
                 key={contentType.type}
-                block={block}
+                block={createFreshBlock()}
                 icon={Icon}
                 label={contentType.label}
                 description={contentType.description}
-                onAdd={() => onAddBlock(block)}
+                onAdd={() => onAddBlock(createFreshBlock())}
               />
             )
           })}
