@@ -136,14 +136,14 @@ export function BlockEditor({ block, onUpdate, onClose }: BlockEditorProps) {
                 <Label htmlFor="padding">Padding</Label>
                 <div className="flex items-center space-x-2">
                   <Slider
-                    value={[localBlock.style.padding]}
+                    value={[typeof localBlock.style.padding === 'number' ? localBlock.style.padding : 16]}
                     onValueChange={([value]) => updateStyle({ padding: value })}
                     min={0}
                     max={64}
                     step={4}
                     className="flex-1"
                   />
-                  <span className="text-sm w-8">{localBlock.style.padding}</span>
+                  <span className="text-sm w-8">{typeof localBlock.style.padding === 'number' ? localBlock.style.padding : 16}</span>
                 </div>
               </div>
             </div>
@@ -232,14 +232,14 @@ export function BlockEditor({ block, onUpdate, onClose }: BlockEditorProps) {
               <Label htmlFor="padding">Padding</Label>
               <div className="flex items-center space-x-2">
                 <Slider
-                  value={[localBlock.style.padding]}
+                  value={[typeof localBlock.style.padding === 'number' ? localBlock.style.padding : 16]}
                   onValueChange={([value]) => updateStyle({ padding: value })}
                   min={0}
                   max={64}
                   step={4}
                   className="flex-1"
                 />
-                <span className="text-sm w-8">{localBlock.style.padding}</span>
+                <span className="text-sm w-8">{typeof localBlock.style.padding === 'number' ? localBlock.style.padding : 16}</span>
               </div>
             </div>
           </div>
@@ -385,14 +385,14 @@ export function BlockEditor({ block, onUpdate, onClose }: BlockEditorProps) {
               <Label htmlFor="padding">Padding</Label>
               <div className="flex items-center space-x-2">
                 <Slider
-                  value={[localBlock.style.padding]}
+                  value={[typeof localBlock.style.padding === 'number' ? localBlock.style.padding : 16]}
                   onValueChange={([value]) => updateStyle({ padding: value })}
                   min={0}
                   max={64}
                   step={4}
                   className="flex-1"
                 />
-                <span className="text-sm w-8">{localBlock.style.padding}</span>
+                <span className="text-sm w-8">{typeof localBlock.style.padding === 'number' ? localBlock.style.padding : 16}</span>
               </div>
             </div>
           </div>

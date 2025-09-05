@@ -3,7 +3,7 @@
 import type { EmailBlock, RowBlock, ColumnBlock, ContentBlock } from "./block-types"
 import { Button } from "@/components/ui/button"
 import { Trash2, Edit, Plus, GripVertical } from "lucide-react"
-import { useSortable, useDroppable } from "@dnd-kit/sortable"
+import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { ColumnDropZone } from "./column-drop-zone"
 

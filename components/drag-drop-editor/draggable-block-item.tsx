@@ -39,11 +39,12 @@ export function DraggableBlockItem({ block, icon: Icon, label, description, onAd
       }`}>
         {/* Drag Handle */}
         <div
-          className="flex items-center justify-center w-8 cursor-grab active:cursor-grabbing hover:bg-gray-100 rounded-l-md"
+          className="flex items-center justify-center w-10 cursor-grab active:cursor-grabbing hover:bg-gray-100 rounded-l-md border-r border-gray-200"
           {...attributes}
           {...listeners}
+          title="Drag to add to canvas"
         >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
+          <GripVertical className="h-5 w-5 text-muted-foreground" />
         </div>
         
         {/* Content Area - Click to Add */}
@@ -55,6 +56,9 @@ export function DraggableBlockItem({ block, icon: Icon, label, description, onAd
           <div className="text-left flex-1">
             <div className="font-medium">{label}</div>
             <div className="text-xs text-muted-foreground">{description}</div>
+          </div>
+          <div className="text-xs text-muted-foreground border border-gray-200 px-2 py-1 rounded">
+            Click to add
           </div>
         </div>
       </div>

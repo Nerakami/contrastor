@@ -43,9 +43,9 @@ export default function DragDropEditorPage({ params }: { params: Promise<{ id: s
   const sensors = useSensors(
     useSensor(PointerSensor, { 
       activationConstraint: { 
-        distance: 5,
-        delay: 100,
-        tolerance: 5
+        distance: 8,
+        delay: 0,
+        tolerance: 8
       } 
     })
   )
