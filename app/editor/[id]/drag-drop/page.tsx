@@ -186,7 +186,7 @@ export default function DragDropEditorPage({ params }: { params: Promise<{ id: s
     console.log("Drag start:", event.active.id, event.active.data.current)
     setActiveId(event.active.id as string)
     const draggedItem = event.active.data.current
-    if (draggedItem) {
+    if (draggedItem?.block) {
       setDraggedBlock(draggedItem.block)
     }
   }
@@ -198,48 +198,67 @@ export default function DragDropEditorPage({ params }: { params: Promise<{ id: s
       active: { id: active.id, data: active.data.current },
       over: over ? { id: over.id, data: over.data.current } : null
     })
-    
-    setActiveId(null)
-    setDraggedBlock(null)
 
     if (!over) {
       console.log("No drop target found")
+      setActiveId(null)
+      setDraggedBlock(null)
       return
     }
 
     const activeData = active.data.current
     const overData = over.data.current
 
-    // Handle dropping from sidebar to canvas
-    if (activeData?.isFromSidebar) {
-      console.log("Dropping from sidebar", { activeData, overData, overId: over.id })
+    // Handle dropping from sidebar to canvas - check multiple conditions
+    const isFromSidebar = activeData?.isFromSidebar || 
+                         activeData?.type === 'sidebar-block' || 
+                         (active.id as string).startsWith('sidebar-') ||
+                         draggedBlock // fallback to stored drag state
+
+    if (isFromSidebar) {
+      console.log("Dropping from sidebar", { activeData, overData, overId: over.id, draggedBlock })
+      
+      // Use the block from activeData or fallback to stored draggedBlock
+      const blockToAdd = activeData?.block || draggedBlock
+      
+      if (!blockToAdd) {
+        console.log("No block data found to add")
+        setActiveId(null)
+        setDraggedBlock(null)
+        return
+      }
       
       if (overData?.columnId) {
         // Dropping into a column
         console.log("Dropping into column:", overData.columnId)
-        const newBlock = activeData.block as ContentBlock
-        handleAddToColumn(overData.columnId, { ...newBlock, id: `${newBlock.type}-${Date.now()}` })
-      } else {
-        // Dropping onto main canvas (check for canvas ID or isCanvas flag)
+        const newBlock = { ...blockToAdd, id: `${blockToAdd.type}-${Date.now()}` } as ContentBlock
+        handleAddToColumn(overData.columnId, newBlock)
+      } else if (overData?.isCanvas || over.id === 'main-canvas') {
+        // Dropping onto main canvas
         console.log("Dropping onto main canvas", { isCanvas: overData?.isCanvas, overId: over.id })
-        const newBlock = { ...activeData.block, id: `${activeData.block.type}-${Date.now()}` } as EmailBlock
+        const newBlock = { ...blockToAdd, id: `${blockToAdd.type}-${Date.now()}` } as EmailBlock
         handleAddBlock(newBlock)
         console.log("Added block:", newBlock)
+      } else {
+        console.log("Unknown drop target", { overData, overId: over.id })
       }
-      return
-    }
+    } else {
+      // Handle reordering existing blocks
+      if (active.id !== over.id) {
+        const activeIndex = (content.blocks || []).findIndex((block) => block.id === active.id)
+        const overIndex = (content.blocks || []).findIndex((block) => block.id === over.id)
 
-    // Handle reordering existing blocks
-    if (active.id !== over.id) {
-      const activeIndex = (content.blocks || []).findIndex((block) => block.id === active.id)
-      const overIndex = (content.blocks || []).findIndex((block) => block.id === over.id)
-
-      if (activeIndex !== -1 && overIndex !== -1) {
-        setContent((prev) => ({
-          blocks: arrayMove(prev.blocks || [], activeIndex, overIndex)
-        }))
+        if (activeIndex !== -1 && overIndex !== -1) {
+          setContent((prev) => ({
+            blocks: arrayMove(prev.blocks || [], activeIndex, overIndex)
+          }))
+        }
       }
     }
+    
+    // Clean up drag state
+    setActiveId(null)
+    setDraggedBlock(null)
   }
 
   const handleDragOver = (event: DragOverEvent) => {

@@ -14,10 +14,11 @@ interface DraggableBlockItemProps {
 }
 
 export function DraggableBlockItem({ block, icon: Icon, label, description, onAdd }: DraggableBlockItemProps) {
-  const dragId = `sidebar-${block.type}-${Math.random().toString(36).substr(2, 9)}`
+  const dragId = `sidebar-${block.type}-${block.id || Date.now()}`
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: dragId,
     data: {
+      type: 'sidebar-block',
       block,
       isFromSidebar: true,
     },
