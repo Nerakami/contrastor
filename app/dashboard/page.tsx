@@ -132,9 +132,6 @@ export default async function DashboardPage() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Recent Emails</h2>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/dashboard/emails">View All</Link>
-              </Button>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {recentEmails.map((email) => (
@@ -149,9 +146,6 @@ export default async function DashboardPage() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Recent Folders</h2>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/dashboard/folders">View All</Link>
-              </Button>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {folders.map((folder) => (

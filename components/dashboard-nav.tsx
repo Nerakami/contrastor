@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Mail, Home, Users, Settings, LogOut, Plus } from "lucide-react"
+import { Mail, Home, Users, LogOut, Plus } from "lucide-react"
 import { signOut } from "@/lib/actions"
 
 interface DashboardNavProps {
@@ -30,7 +30,6 @@ export function DashboardNav({ user }: DashboardNavProps) {
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
     { name: "Groups", href: "/dashboard/groups", icon: Users },
-    { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ]
 
   return (
@@ -95,13 +94,6 @@ export function DashboardNav({ user }: DashboardNavProps) {
                     <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </Link>
-                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <form action={signOut}>

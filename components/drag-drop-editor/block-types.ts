@@ -32,11 +32,10 @@ export interface TextBlock extends BaseBlock {
   style: {
     fontSize: number
     fontWeight: "normal" | "bold"
-    fontFamily: string
     textAlign: "left" | "center" | "right"
     color: string
     backgroundColor: string
-    padding: { top: number, right: number, bottom: number, left: number } | number
+    padding: number
     lineHeight: number
   }
 }
@@ -99,11 +98,10 @@ export interface EmailContent {
 export function createRowBlock(columnCount: number): RowBlock {
   const columnWidth = Math.floor(100 / columnCount)
   const columns: ColumnBlock[] = []
-  const baseTimestamp = Date.now()
 
   for (let i = 0; i < columnCount; i++) {
     columns.push({
-      id: `col-${baseTimestamp}-${i}`,
+      id: `col-${Date.now()}-${i}`,
       type: "column",
       width: columnWidth,
       blocks: [],
@@ -116,7 +114,7 @@ export function createRowBlock(columnCount: number): RowBlock {
   }
 
   return {
-    id: `row-${baseTimestamp}`,
+    id: `row-${Date.now()}`,
     type: "row",
     columns,
     style: {
@@ -134,7 +132,6 @@ export function createTextBlock(): TextBlock {
     style: {
       fontSize: 16,
       fontWeight: "normal",
-      fontFamily: "Arial",
       textAlign: "left",
       color: "#000000",
       backgroundColor: "transparent",

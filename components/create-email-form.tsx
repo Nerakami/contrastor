@@ -62,7 +62,7 @@ export default function CreateEmailForm({ groups }: CreateEmailFormProps) {
     if (state?.success && state?.emailId) {
       router.push(`/editor/${state.emailId}`)
     }
-  }, [state, router])
+  }, [state]) // router is stable and doesn't need to be tracked
 
   const selectedGroupData = groups.find((g) => g.id === selectedGroup)
 
@@ -151,7 +151,7 @@ export default function CreateEmailForm({ groups }: CreateEmailFormProps) {
                   {selectedGroupData?.folders?.map((folder) => (
                     <SelectItem key={folder.id} value={folder.id}>
                       <div className="flex items-center">
-                        <Folder className="h-4 w-4 mr-2" />
+                        <Folder className="h-4 w-4 mr-2 text-primary" />
                         {folder.name}
                       </div>
                     </SelectItem>

@@ -1,24 +1,49 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Type, ImageIcon, MousePointer, Minus, Space, Columns, Columns2, Columns3 } from "lucide-react"
-import type { EmailBlock } from "./block-types"
-import {
-  createRowBlock,
-  createTextBlock,
-  createImageBlock,
-  createButtonBlock,
-  createSpacerBlock,
-  createDividerBlock,
-} from "./block-types"
-import { DraggableBlockItem } from "./draggable-block-item"
+import { useDraggable } from "@dnd-kit/core"
 
-interface BlockSidebarProps {
-  onAddBlock: (block: EmailBlock) => void
+interface DraggableItemProps {
+  id: string
+  type: string
+  label: string
+  description: string
+  icon: any
+  columns?: number
 }
 
-export function BlockSidebar({ onAddBlock }: BlockSidebarProps) {
+function DraggableItem({ id, type, label, description, icon: Icon, columns }: DraggableItemProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id,
+    data: {
+      source: "sidebar",
+      type,
+      columns,
+    },
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={`cursor-grab active:cursor-grabbing transition-opacity ${isDragging ? "opacity-50" : ""}`}
+    >
+      <div className="w-full justify-start h-auto p-3 border rounded-lg bg-transparent hover:bg-accent/50 transition-colors">
+        <div className="flex items-center space-x-3">
+          <Icon className="h-5 w-5" />
+          <div className="text-left">
+            <div className="font-medium text-sm">{label}</div>
+            <div className="text-xs text-muted-foreground">{description}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function BlockSidebar() {
   const layoutTypes = [
     { type: "row-1", label: "1 Column", icon: Columns, description: "Single column layout", columns: 1 },
     { type: "row-2", label: "2 Columns", icon: Columns2, description: "Two column layout", columns: 2 },
@@ -36,27 +61,6 @@ export function BlockSidebar({ onAddBlock }: BlockSidebarProps) {
     { type: "divider", label: "Divider", icon: Minus, description: "Add a horizontal line" },
   ]
 
-  const createBlock = (type: string, columns?: number): EmailBlock => {
-    if (type.startsWith("row-") && columns) {
-      return createRowBlock(columns)
-    }
-
-    switch (type) {
-      case "text":
-        return createTextBlock()
-      case "image":
-        return createImageBlock()
-      case "button":
-        return createButtonBlock()
-      case "spacer":
-        return createSpacerBlock()
-      case "divider":
-        return createDividerBlock()
-      default:
-        throw new Error(`Unknown block type: ${type}`)
-    }
-  }
-
   return (
     <div className="space-y-4">
       {/* Layout Blocks */}
@@ -65,20 +69,17 @@ export function BlockSidebar({ onAddBlock }: BlockSidebarProps) {
           <CardTitle className="text-lg">Layout</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {layoutTypes.map((layoutType) => {
-            const Icon = layoutType.icon
-            const createFreshBlock = () => createBlock(layoutType.type, layoutType.columns)
-            return (
-              <DraggableBlockItem
-                key={layoutType.type}
-                block={createFreshBlock()}
-                icon={Icon}
-                label={layoutType.label}
-                description={layoutType.description}
-                onAdd={() => onAddBlock(createFreshBlock())}
-              />
-            )
-          })}
+          {layoutTypes.map((layoutType) => (
+            <DraggableItem
+              key={layoutType.type}
+              id={`sidebar-${layoutType.type}`}
+              type={layoutType.type}
+              label={layoutType.label}
+              description={layoutType.description}
+              icon={layoutType.icon}
+              columns={layoutType.columns}
+            />
+          ))}
         </CardContent>
       </Card>
 
@@ -88,20 +89,16 @@ export function BlockSidebar({ onAddBlock }: BlockSidebarProps) {
           <CardTitle className="text-lg">Content</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {contentTypes.map((contentType) => {
-            const Icon = contentType.icon
-            const createFreshBlock = () => createBlock(contentType.type)
-            return (
-              <DraggableBlockItem
-                key={contentType.type}
-                block={createFreshBlock()}
-                icon={Icon}
-                label={contentType.label}
-                description={contentType.description}
-                onAdd={() => onAddBlock(createFreshBlock())}
-              />
-            )
-          })}
+          {contentTypes.map((contentType) => (
+            <DraggableItem
+              key={contentType.type}
+              id={`sidebar-${contentType.type}`}
+              type={contentType.type}
+              label={contentType.label}
+              description={contentType.description}
+              icon={contentType.icon}
+            />
+          ))}
         </CardContent>
       </Card>
     </div>

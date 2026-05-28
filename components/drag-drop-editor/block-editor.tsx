@@ -1,12 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { RichTextEditor } from "./rich-text-editor"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import type { EmailBlock } from "./block-types"
@@ -19,10 +18,6 @@ interface BlockEditorProps {
 
 export function BlockEditor({ block, onUpdate, onClose }: BlockEditorProps) {
   const [localBlock, setLocalBlock] = useState<EmailBlock | null>(block)
-
-  useEffect(() => {
-    setLocalBlock(block)
-  }, [block])
 
   if (!localBlock) {
     return (
@@ -53,12 +48,15 @@ export function BlockEditor({ block, onUpdate, onClose }: BlockEditorProps) {
       case "text":
         return (
           <div className="space-y-4">
-            <RichTextEditor
-              value={localBlock.content}
-              onChange={(content) => updateBlock({ content })}
-              fontFamily={localBlock.style.fontFamily}
-              onFontFamilyChange={(fontFamily) => updateStyle({ fontFamily })}
-            />
+            <div>
+              <Label htmlFor="content">Content</Label>
+              <Textarea
+                id="content"
+                value={localBlock.content}
+                onChange={(e) => updateBlock({ content: e.target.value })}
+                rows={4}
+              />
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -136,14 +134,14 @@ export function BlockEditor({ block, onUpdate, onClose }: BlockEditorProps) {
                 <Label htmlFor="padding">Padding</Label>
                 <div className="flex items-center space-x-2">
                   <Slider
-                    value={[typeof localBlock.style.padding === 'number' ? localBlock.style.padding : 16]}
+                    value={[localBlock.style.padding]}
                     onValueChange={([value]) => updateStyle({ padding: value })}
                     min={0}
                     max={64}
                     step={4}
                     className="flex-1"
                   />
-                  <span className="text-sm w-8">{typeof localBlock.style.padding === 'number' ? localBlock.style.padding : 16}</span>
+                  <span className="text-sm w-8">{localBlock.style.padding}</span>
                 </div>
               </div>
             </div>
@@ -154,41 +152,12 @@ export function BlockEditor({ block, onUpdate, onClose }: BlockEditorProps) {
         return (
           <div className="space-y-4">
             <div>
-              <Label htmlFor="imageFile">Upload Image</Label>
-              <Input
-                id="imageFile"
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) {
-                    const reader = new FileReader()
-                    reader.onload = (e) => {
-                      updateBlock({ src: e.target?.result as string })
-                    }
-                    reader.readAsDataURL(file)
-                  }
-                }}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="src">Or enter Image URL</Label>
+              <Label htmlFor="src">Image URL</Label>
               <Input
                 id="src"
                 value={localBlock.src}
                 onChange={(e) => updateBlock({ src: e.target.value })}
                 placeholder="https://example.com/image.jpg"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="imageHref">Link URL (optional)</Label>
-              <Input
-                id="imageHref"
-                value={localBlock.href || ""}
-                onChange={(e) => updateBlock({ href: e.target.value })}
-                placeholder="https://example.com"
               />
             </div>
 
@@ -232,14 +201,14 @@ export function BlockEditor({ block, onUpdate, onClose }: BlockEditorProps) {
               <Label htmlFor="padding">Padding</Label>
               <div className="flex items-center space-x-2">
                 <Slider
-                  value={[typeof localBlock.style.padding === 'number' ? localBlock.style.padding : 16]}
+                  value={[localBlock.style.padding]}
                   onValueChange={([value]) => updateStyle({ padding: value })}
                   min={0}
                   max={64}
                   step={4}
                   className="flex-1"
                 />
-                <span className="text-sm w-8">{typeof localBlock.style.padding === 'number' ? localBlock.style.padding : 16}</span>
+                <span className="text-sm w-8">{localBlock.style.padding}</span>
               </div>
             </div>
           </div>
@@ -385,14 +354,14 @@ export function BlockEditor({ block, onUpdate, onClose }: BlockEditorProps) {
               <Label htmlFor="padding">Padding</Label>
               <div className="flex items-center space-x-2">
                 <Slider
-                  value={[typeof localBlock.style.padding === 'number' ? localBlock.style.padding : 16]}
+                  value={[localBlock.style.padding]}
                   onValueChange={([value]) => updateStyle({ padding: value })}
                   min={0}
                   max={64}
                   step={4}
                   className="flex-1"
                 />
-                <span className="text-sm w-8">{typeof localBlock.style.padding === 'number' ? localBlock.style.padding : 16}</span>
+                <span className="text-sm w-8">{localBlock.style.padding}</span>
               </div>
             </div>
           </div>

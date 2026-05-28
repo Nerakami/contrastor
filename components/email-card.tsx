@@ -7,9 +7,6 @@ import { Mail, MoreHorizontal, Edit, Trash2, Code, Palette } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
-import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
 
 interface EmailCardProps {
   email: {
@@ -21,42 +18,11 @@ interface EmailCardProps {
   }
   groupId: string
   folderId?: string
-  showDeleteButton?: boolean
 }
 
-export function EmailCard({ email, groupId, folderId, showDeleteButton = false }: EmailCardProps) {
-  const [isDeleting, setIsDeleting] = useState(false)
-  const router = useRouter()
-  const supabase = createClient()
-  
+export function EmailCard({ email, groupId, folderId }: EmailCardProps) {
   const editorIcon = email.editor_type === "drag-drop" ? Palette : Code
   const EditorIcon = editorIcon
-
-  const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete "${email.name}"? This action cannot be undone.`)) {
-      return
-    }
-
-    setIsDeleting(true)
-    try {
-      const { error } = await supabase
-        .from("emails")
-        .delete()
-        .eq("id", email.id)
-
-      if (error) {
-        console.error("Error deleting email:", error)
-        alert("Failed to delete email. Please try again.")
-      } else {
-        router.refresh()
-      }
-    } catch (error) {
-      console.error("Error deleting email:", error)
-      alert("Failed to delete email. Please try again.")
-    } finally {
-      setIsDeleting(false)
-    }
-  }
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -78,28 +44,22 @@ export function EmailCard({ email, groupId, folderId, showDeleteButton = false }
                 Edit
               </Link>
             </DropdownMenuItem>
-            {showDeleteButton && (
-              <DropdownMenuItem 
-                className="text-destructive"
-                onClick={handleDelete}
-                disabled={isDeleting}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {isDeleting ? "Deleting..." : "Delete"}
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem className="text-destructive">
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Badge 
-              variant={email.editor_type === "drag-drop" ? "default" : "secondary"} 
+            <Badge
+              variant="secondary"
               className={`text-xs ${
-                email.editor_type === "drag-drop" 
-                  ? "bg-green-100 text-green-800 hover:bg-green-200 border-green-200" 
-                  : "bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200"
+                email.editor_type === "drag-drop"
+                  ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                  : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
               }`}
             >
               <EditorIcon className="h-3 w-3 mr-1" />

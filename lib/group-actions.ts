@@ -2,7 +2,6 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { randomBytes } from "crypto"
 
 // Create a new group
 export async function createGroup(prevState: any, formData: FormData) {
@@ -142,7 +141,7 @@ export async function inviteToGroup(prevState: any, formData: FormData) {
     }
 
     // Generate invitation token
-    const token = randomBytes(32).toString("hex")
+    const token = generateToken()
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 7) // 7 days from now
 
@@ -265,4 +264,14 @@ export async function removeMember(groupId: string, userId: string) {
     console.error("Remove member error:", error)
     return { error: "An unexpected error occurred. Please try again." }
   }
+}
+
+function generateToken(): string {
+  // Generate a random token using crypto.randomUUID() which is available in both Node.js and browsers
+  // If not available, fall back to a simple random string generator
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "")
+  }
+  // Fallback for older environments
+  return Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("")
 }
